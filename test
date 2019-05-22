@@ -1,0 +1,25 @@
+print('a')
+print "Hello again"
+
+
+def print_one(*args):
+    arg1,arg2=args
+    print "arg1:%r,arg2:%r" %(arg1,arg2)
+
+
+print_one('hello',"yes")
+
+def print_all(f):
+    print f.read()
+def rewind(f):
+    f.seek(0)
+def print_aline(line_cnt,f):
+    print line_cnt,f.readline()
+
+curren_file=open("1.txt")
+#print_all(curren_file)
+#rewind(curren_file)
+#print_aline(1,curren_file)
+#print_aline(2,curren_file)
+#print_aline(3,curren_file)
+
