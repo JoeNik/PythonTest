@@ -1,3 +1,5 @@
+import datetime
+
 from bs4 import BeautifulSoup
 from urllib import request
 import wx, json
@@ -15,13 +17,65 @@ headers = {
 cookiestrHead = r'ki1e_2132_saltkey=lsBSSV39; ki1e_2132_lastvisit=1559725160; ki1e_2132_auth=c705jfbJcHk%2B3iB3qmrPG1BrW5ijmJ6TRrgoHFm3EvazA85CtaRR%2BPp9LAoFz0Gr11Bm9hCt8iXL0eErm8Kyb9OcApg; ki1e_2132_connect_is_bind=1; ki1e_2132_smile=1D1; ki1e_2132_pc_size_c=0; Hm_lvt_da6569f688ba2c32429af00afd9eb8a1=1559780847,1559810342,1559810796,1560127058; ki1e_2132_creditnotice=0D0D0D0D0D0D0D0D0D538097; ki1e_2132_creditbase=0D1303D0D0D0D0D0D0D0; ki1e_2132_clearUserdata=forum; ki1e_2132_connect_not_sync_t=1; ki1e_2132_creditrule=%E5%8F%91%E8%A1%A8%E5%9B%9E%E5%A4%8D; td_cookie=18446744071559493794; timestamp=1560130076000; sign=4CBD74A5DD4643A9A56601CC25825DB4; ki1e_2132_nofocus_forum=1; ki1e_2132_atarget=1; ki1e_2132_forum_lastvisit=D_26_1560131402; ki1e_2132_ulastactivity=1560132614%7C0; ki1e_2132_checkpm=1; ki1e_2132_sendmail=1; ki1e_2132_lastcheckfeed=538097%7C1560132615; ki1e_2132_checkfollow=1; ki1e_2132_noticeTitle=1; Hm_lpvt_da6569f688ba2c32429af00afd9eb8a1=1560132616; amvid=c3faf2181a26daf6a98851670ae53153; ki1e_2132_lastact=1560132619%09forum.php%09viewthread; ki1e_2132_viewid=tid_6113962'
 DingPost_url = "https://oapi.dingtalk.com/robot/send?access_token=b63c5a144e9102029af7ef052c20150503441101f54dbb1c81a47285d56105d9"
 
+# 范围时间
+d_time = datetime.datetime.strptime(str(datetime.datetime.now().date()) + '10:00', '%Y-%m-%d%H:%M')
+d_time1 = datetime.datetime.strptime(str(datetime.datetime.now().date()) + '10:32', '%Y-%m-%d%H:%M')
+
+# 当前时间
+n_time = datetime.datetime.now()
+
+# 判断当前时间是否在范围时间内
+if n_time > d_time and n_time < d_time1:
+    print("login ")
+JSCode = r'''
+            function do_encrypt_rc4(src, passwd) {
+                passwd = passwd + '';
+                var i, j = 0, a = 0, b = 0, c = 0, temp;
+                var plen = passwd.length,
+                    size = src.length;
+            
+                var key = Array(256); //int
+                var sbox = Array(256); //int
+                var output = Array(size); //code of data
+                for (i = 0; i < 256; i++) {
+                    key[i] = passwd.charCodeAt(i % plen);
+                    sbox[i] = i;
+                }
+                for (i = 0; i < 256; i++) {
+                    j = (j + sbox[i] + key[i]) % 256;
+                    temp = sbox[i];
+                    sbox[i] = sbox[j];
+                    sbox[j] = temp;
+                }
+                for (i = 0; i < size; i++) {
+                    a = (a + 1) % 256;
+                    b = (b + sbox[a]) % 256;
+                    temp = sbox[a];
+                    sbox[a] = sbox[b];
+                    sbox[b] = temp;
+                    c = (sbox[a] + sbox[b]) % 256;
+                    temp = src.charCodeAt(i) ^ sbox[c];//String.fromCharCode(src.charCodeAt(i) ^ sbox[c]);
+                    temp = temp.toString(16);
+                    if (temp.length === 1) {
+                        temp = '0' + temp;
+                    } else if (temp.length === 0) {
+                        temp = '00';
+                    }
+                    output[i] = temp;
+                }
+                return output.join('');
+            }
+'''
+
 
 # key 13位UNIX时间 data 密码
 def get_des_psswd(data, key):
     try:
-        jsstr = get_js()
-        ctx = execjs.compile(jsstr)  # 加载JS文件
-        return (ctx.call('do_encrypt_rc4', data, key))  # 调用js方法  第一个参数是JS的方法名，后面的data和key是js方法的参数
+        CTX = execjs.compile(JSCode)
+        return CTX.call('do_encrypt_rc4', data, key )
+        # jsstr = get_js()
+        # ctx = execjs.compile(jsstr)  # 加载JS文件
+        # return (ctx.call('do_encrypt_rc4', data, key))  # 调用js方法  第一个参数是JS的方法名，后面的data和key是js方法的参数
        #return execjs.compile(open(r"E:\\bReadyWorking\\gothonweb\\bin\\loginCheck.js").read().decode("utf-8")).call('do_encrypt_rc4', data,key)
     except Exception as e:
         print('GetDingMarkDown error:' + str(e))
@@ -53,18 +107,17 @@ def get_js():
         print('GetDingMarkDown error:' + str(e))
 
 
-#current_milli_time = lambda: int(round(time.time() * 1000))
 millis = int(round(time.time() * 1000))
-psw = js2pyTest("123456", millis)
-
+#psw = js2pyTest("123456", millis)
+psw = get_des_psswd("123456", millis)
 # 1.代码登录
 # 1.1 登录的网址
 login_url = "http://191.168.4.1/ac_portal/disclaimer/pc.html?template=disclaimer&tabs=pwd&vlanid=0&_ID_=0&switch_url=&url=https://hao.360.com/?wd_xp1&controller_type=&mac=00-00-00-00-00-00"
 login_form_data = {
     "opr": "pwdLogin",
-    "userName": "郑乔",
-    "pwd": "ee772406c049",
-    "auth_tag": "1576831030768",
+    "userName": "翁兆炜",
+    "pwd": psw,
+    "auth_tag": millis,
     "rememberPwd": 0
 }
 # auth_tag 取到毫秒转化成Unix时间
@@ -86,6 +139,9 @@ login_str = parse.urlencode(login_form_data).encode('utf-8')
 login_request = urllib.request.Request(login_url, headers=headers2, data=login_str)
 # 如果登录成功，cookjar自动保存cookie
 opener.open(login_request)
+for ck in cook_jar:
+    print(ck)
+
 
 
 def get_contents(chapter):
