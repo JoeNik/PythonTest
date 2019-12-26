@@ -4,10 +4,10 @@ import threading
 import urllib
 from http import cookiejar
 
-import execjs
+import execjs, os
 import requests
 from bs4 import BeautifulSoup
-import time, logUntil
+import time, logUntil, Config
 from urllib import request, parse
 
 headers = {
@@ -15,6 +15,7 @@ headers = {
     'Content-Type': 'application/json'}
 
 server = 'http://www.zuanke8.com/zuixin.php'
+# server = 'http://www.baidu.com'
 
 #  dingding请求地址
 DingPost_url = "https://oapi.dingtalk.com/robot/send?access_token=b63c5a144e9102029af7ef052c20150503441101f54dbb1c81a47285d56105d9"
@@ -22,45 +23,94 @@ cookiestrHead = r'ki1e_2132_connect_is_bind=1; ki1e_2132_smile=1D1; ki1e_2132_at
 
 keyword = ['速度', 'bug', '快', '水', '有了', '好价', '赶紧', '作业', '速撸', '撒果', '首发', '平行', '神价', '线报', '爱奇艺', '好莱坞', '周卡', '月卡',
            '可以', '冲', '招行抽奖']
-# 推送到钉钉
-isPostToDing = 1
 
+cfg = Config.ReadConfig()
+
+# 推送到钉钉
+isPostToDing = int(cfg.get_val("system", "isPostToDing", "1"))
+DingPost_url = cfg.get_val("system", "DingPost_url",
+                           "https://oapi.dingtalk.com/robot/send?access_token=b63c5a144e9102029af7ef052c20150503441101f54dbb1c81a47285d56105d9")
+
+curPath = os.getcwd()
+if os.path.exists(curPath + "cookies.txt"):
+    f = open(curPath + '\\cookies.txt')
+    cookiestrHead = f.read()
+    f.close()
+else:
+    f = open(curPath + '\\cookies.txt', 'w')
+    f.write(
+        r'ki1e_2132_connect_is_bind=1; ki1e_2132_smile=1D1; ki1e_2132_atlist=179919%2C730672%2C891213%2C69238%2C4%2C18%2C3; __gads=Test; ki1e_2132_atarget=1; ki1e_2132_saltkey=BOFHWJus; ki1e_2132_lastvisit=1575848667; ki1e_2132_auth=7ec3SUJXMYbXjWIBi%2BWbubChIaBTk%2Fqh0tZrX33i%2F5yx5y6HNY0HfW7Zlo%2Bf936GbiBteSs6cAoPLkFDHAa4wd8TjFQ; ki1e_2132_pc_size_c=0; Hm_lvt_da6569f688ba2c32429af00afd9eb8a1=1576199433,1576456388,1576542119,1576630816; timestamp=1576636591000; sign=DB3D4C55FA5ACF1ECCEB850D3C7C7543; td_cookie=30223767; ki1e_2132_lastviewtime=538097%7C1576649069; ki1e_2132_nofocus_forum=1; ki1e_2132_clearUserdata=forum; ki1e_2132_creditnotice=0D0D0D0D0D0D0D0D0D538097; ki1e_2132_creditbase=0D1639D0D0D0D0D0D0D0; ki1e_2132_creditrule=%E5%8F%91%E8%A1%A8%E5%9B%9E%E5%A4%8D; ki1e_2132_connect_not_sync_t=1; ki1e_2132_connect_not_sync_feed=1; ki1e_2132_forum_lastvisit=D_19_1573625063D_25_1576137386D_22_1576137419D_26_1576648030D_11_1576654048; ki1e_2132_ulastactivity=1576660463%7C0; ki1e_2132_dismobilemessage=1; ki1e_2132_mobile=no; ki1e_2132_checkpm=1; ki1e_2132_sendmail=1; ki1e_2132_lastcheckfeed=538097%7C1576660554; ki1e_2132_checkfollow=1; Hm_lpvt_da6569f688ba2c32429af00afd9eb8a1=1576660556; amvid=f7dbb54ebd542d284d740bc3176fec0d; ki1e_2132_lastact=1576660558%09forum.php%09viewthread; ki1e_2132_viewid=tid_6699009')
+    f = f.close()
+    f = open(curPath + '\\cookies.txt')
+    cookiestrHead = f.read()
+    f.close()
+
+keywordStr = cfg.get_val("system", "keyword", "速度,bug,快,水,有了,好价,赶紧,作业,速撸,撒果,首发,平行,神价,线报,爱奇艺,好莱坞,周卡,月卡,可以,冲,招行抽奖,教程")
+keyword = keywordStr.split(',')
 lstExistArg = []
 lstErrorArg = []  # 已删除获取权限过高的帖子集合
 
 log = logUntil.logs()
 
+# 失败次数统计
+global failReqCnt
+
+#回帖
+def reply(tid, message, millis, formhash):
+    try:
+        postdata = {
+            "message": message,
+            "posttime": millis,
+            "formhash": formhash+"1",
+            "usesig": "1",
+            "subject": "  ",
+            "connect_publish_t": 0
+        }
+        # 添加请求头
+        headers2 = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.25 Safari/537.36 Core/1.70.3650.400 QQBrowser/10.4.3341.400",
+            "Content - Type": "application / x - www - form - urlencoded",
+            "Cookie": cookiestrHead}
+        # base_url = config.REPLYURL
+        base_url = r'http://www.zuanke8.com/forum.php?mod=post&action=reply&tid=TID&extra=&replysubmit=yes'
+        url = base_url.replace('TID', tid)
+        res1 = requests.post(url, postdata, headers=headers2)
+    except Exception as e:
+        log.error("reply error:"+str(e))
 
 def isExistLst(value):
     try:
+        # log.info("已推送帖个数:" + str(len(lstExistArg)))
+        # 帖子大于30就把前10条清空
+        if len(lstExistArg) > 30:
+            del lstExistArg[0:10]
         lstExistArgSet = set(lstExistArg)
         if value in lstExistArgSet:
             return True
         else:
             lstExistArg.append(value)
             return False
-        # 帖子大于30就把前10条清空
-        if len(lstExistArg) > 30:
-            del lstExistArg[0:10]
     except Exception as e:
         log.error('isExistLst error:' + str(e))
 
 
 def isExistErrorLst(value):
     try:
+        # log.info("权限帖个数:" + str(len(lstErrorArg)))
         lstErrorArgSet = set(lstErrorArg)
+        if len(lstErrorArg) > 20:
+            del lstErrorArg[0:1]
         if value in lstErrorArgSet:
             return True
         else:
-            lstErrorArg.append(value)
+            # lstErrorArg.append(value)
             return False
-        if len(lstErrorArg) > 20:
-            del lstErrorArg[0:1]
     except Exception as e:
         log.error('isExistErrorLst error:' + str(e))
 
 
 def get_contents(chapter):
+    sucFlag = 0
     try:
         req = request.Request(chapter)
         # 设置cookie
@@ -86,7 +136,9 @@ def get_contents(chapter):
         # write_txt("E:\\bReadyWorking\\gothonweb\\bin\\log.txt", str(a), 'utf8')
         # print(chardet.detect(html))
         ArgLst = []  # 文章信息列表
+        firstArgTitle = ""
         for each in a:
+            sucFlag = 1
             try:
                 b = each.find('center')
                 # print('xxx:' + str(b))
@@ -96,7 +148,7 @@ def get_contents(chapter):
                         c = each.select('tr')
                         # print(each)
                         # write_txt("E:\\bReadyWorking\\gothonweb\\bin\\log.txt", str(each), 'utf8')
-                        log.debug(1 + len(c))
+                        log.info(1 + len(c))
                         for d in c:
                             e = d.find_all('th')
                             for f in e:
@@ -127,18 +179,23 @@ def get_contents(chapter):
                                     else:
                                         argUrl = w.get('href')
                                         if not isExistErrorLst(argUrl):
-                                            (remark, comments, picurl) = get_onpage(argUrl, cookiestrHead)
                                             for key in keyword:
                                                 if ftitleTemp.find(key) != -1:
-                                                    log.debug("匹配:" + key)
+                                                    log.info("匹配:" + key)
                                                     if not isExistLst(ftitleTemp):
                                                         if isPostToDing == 1:
-                                                            log.debug("send " + ftitleTemp)
+                                                            (remark, comments, picurl) = get_onpage(argUrl,
+                                                                                                    cookiestrHead)
+                                                            if len(ArgLst) == 0:
+                                                                firstArgTitle = ftitleTemp
+                                                            log.info("send " + ftitleTemp)
                                                             # DingDingPost(ftitleTemp, remark, picurl, comments,
                                                             #              w.get('href'))
                                                             ArgLst.append(
-                                                                GetDingMarkDownText(ftitleTemp, remark, comments,
-                                                                                    argUrl, picurl))
+                                                                GetDingMarkDownText(
+                                                                    str(len(ArgLst) + 1) + ":" + ftitleTemp, remark,
+                                                                    comments,
+                                                                    argUrl, picurl))
                                             # write_db(ftitleTemp, w.get('href'), remark, comments)
                                             # for key in keyword:
                                             #     if ftitleTemp.find(key) != -1:
@@ -159,9 +216,11 @@ def get_contents(chapter):
             except Exception as e:
                 log.error('get_contents error1:' + str(e))
         if len(ArgLst) > 0:
-            DingPostMarkDown("新消息来啦", ArgLst)
+            DingPostMarkDown(firstArgTitle, ArgLst)
+        return sucFlag
     except Exception as e:
         log.error('get_contents error:' + str(e))
+        return sucFlag
 
 
 def get_onpage(chapter, cookiesStr):
@@ -182,11 +241,36 @@ def get_onpage(chapter, cookiesStr):
         # write_txt("E:\\bReadyWorking\\gothonweb\\bin\\log2.html", str(soup), 'gbk')
         # content1 = soup.find('td', class_='t_f').text
         if (title == '提示信息 -  赚客吧'):
-            log.debug(title)
-            log.debug('session 过期或 权限不足，请重新获取')
+            log.info(title)
+            log.info('session 过期或 权限不足，请重新获取')
             # wx.MessageBox("error", 'session 过期，请重新获取', wx.YES_NO)
+            if not isExistErrorLst(chapter):
+                lstErrorArg.append(chapter)
             return ''
         else:
+            title = str(title)
+            titlpos = "撒果" in title
+            if titlpos:
+                try:
+                    form = soup.find('form', id='scbar_form')
+                    formhash = form.find('input', attrs={'name': 'formhash'}).get('value')
+                    tid = ''
+
+                    if 'thread-' in chapter:
+                        tpos = chapter.index('thread-')
+                        tmppid = chapter[tpos + 7:]
+                        tpos = tmppid.index('-')
+                        tid = tmppid[0:tpos]
+                    else:
+                        # http://www.zuanke8.com/forum.php?mod=viewthread&tid=6583253
+                        tpos = chapter.index('tid=')
+                        tid = chapter[tpos + 4:]
+                    if not tid == "":
+                        millis = int(round(time.time() * 1000))
+                        # responseUrl = 'http://www.zuanke8.com/forum.php?mod=post&action=reply&fid=15&tid=' + tid + '&extra=&replysubmit=yes&infloat=yes&handlekey=fastpost&inajax=1'
+                        reply(tid, "1", millis, formhash)
+                except Exception as e:
+                    print('撒果回复error:' + str(e))
             # content1 = soup.find('td', class_='t_f').text
             comments = soup.find_all('td', 't_f')
             cnt = 0
@@ -251,7 +335,7 @@ def DingPostMarkDown(title, textLst):
             }
             # 使用post请求推送消息
             x = requests.post(DingPost_url, data=json.dumps(data), headers=headers)
-            log.debug("post rlt:" + x.text)
+            log.info("post rlt:" + x.text)
     except Exception as e:
         log.error('DingPostMarkDown error:' + str(e))
 
@@ -280,7 +364,7 @@ def DingPostFcard(links):
     data1 = {"feedCard": {"links": links}, "msgtype": "feedCard"}
     # 使用post请求推送消息
     x = requests.post(DingPost_url, data=json.dumps(data1), headers=headers)
-    log.debug("post rlt:" + x.text)
+    log.info("post rlt:" + x.text)
 
 
 JSCode = r'''
@@ -328,16 +412,18 @@ JSCode = r'''
 def get_des_psswd(data, key):
     try:
         CTX = execjs.compile(JSCode)
-        return CTX.call('do_encrypt_rc4', data, key )
+        return CTX.call('do_encrypt_rc4', data, key)
         # jsstr = get_js()
         # ctx = execjs.compile(jsstr)  # 加载JS文件
         # return (ctx.call('do_encrypt_rc4', data, key))  # 调用js方法  第一个参数是JS的方法名，后面的data和key是js方法的参数
-       #return execjs.compile(open(r"E:\\bReadyWorking\\gothonweb\\bin\\loginCheck.js").read().decode("utf-8")).call('do_encrypt_rc4', data,key)
+    # return execjs.compile(open(r"E:\\bReadyWorking\\gothonweb\\bin\\loginCheck.js").read().decode("utf-8")).call('do_encrypt_rc4', data,key)
     except Exception as e:
-        print('GetDingMarkDown error:' + str(e))
+        log.error('GetDingMarkDown error:' + str(e))
+
 
 def login():
     try:
+        log.info("login ")
         millis = int(round(time.time() * 1000))
         # psw = js2pyTest("123456", millis)
         psw = get_des_psswd("123456", millis)
@@ -369,40 +455,60 @@ def login():
         login_request = urllib.request.Request(login_url, headers=headers2, data=login_str)
         # 如果登录成功，cookjar自动保存cookie
         opener.open(login_request)
-        for ck in cook_jar:
-            print("cookie:"+ ck)
+        cookieStr = ''
+        for item in cook_jar:
+            cookieStr = cookieStr + item.name + '=' + item.value + ';'
+        log.info("cookie:" + cookieStr)
     except Exception as e:
-        print('login error:' + str(e))
+        log.info('login error:' + str(e))
+
 
 def loginThd():
     while True:
         try:
             # 范围时间
             d_time = datetime.datetime.strptime(str(datetime.datetime.now().date()) + '01:00', '%Y-%m-%d%H:%M')
-            d_time1 = datetime.datetime.strptime(str(datetime.datetime.now().date()) + '01:02', '%Y-%m-%d%H:%M')
+            d_time1 = datetime.datetime.strptime(str(datetime.datetime.now().date()) + '01:03', '%Y-%m-%d%H:%M')
 
             # 当前时间
             n_time = datetime.datetime.now()
 
             # 判断当前时间是否在范围时间内
             if n_time > d_time and n_time < d_time1:
-                log.debug("login ")
                 login()
         except Exception as e:
-            print('loginThd error:' + str(e))
+            log.error('loginThd error:' + str(e))
         time.sleep(100)
+
+
+def GetContentThd():
+    failReqCnt = 0
+    while True:
+        try:
+            log.info("*****************begin*********************")
+            if get_contents(server) == 0:
+                failReqCnt = failReqCnt + 1
+            else:
+                failReqCnt = 0
+            if failReqCnt >= 400:
+                login()
+            log.info(str(time.ctime()) + "  获取数据完毕")
+        except Exception as e:
+            log.error('main error:' + str(e))
+        time.sleep(10)
 
 
 def main():
     threading.Thread(target=loginThd, args=()).start()
+    threading.Thread(target=GetContentThd, args=()).start()
     while True:
         try:
-            log.debug("*****************begin*********************")
-            get_contents(server)
-            log.debug(str(time.ctime()) + "  获取数据完毕")
-            time.sleep(10)
+            log.info("*****************心跳维持*********************")
+            log.info("已推送帖个数:" + str(len(lstExistArg)))
+            log.info("权限帖个数:" + str(len(lstErrorArg)))
         except Exception as e:
             log.error('main error:' + str(e))
+        time.sleep(60 * 60)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,3 @@
-import datetime
-
 from bs4 import BeautifulSoup
 from urllib import request
 import wx, json
@@ -8,7 +6,7 @@ import time
 from http import cookiejar  # 保存cookie用的
 from urllib import parse  # 转译
 import urllib.request  # 请求库
-import execjs,js2py
+import execjs, js2py
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36',
@@ -17,70 +15,19 @@ headers = {
 cookiestrHead = r'ki1e_2132_saltkey=lsBSSV39; ki1e_2132_lastvisit=1559725160; ki1e_2132_auth=c705jfbJcHk%2B3iB3qmrPG1BrW5ijmJ6TRrgoHFm3EvazA85CtaRR%2BPp9LAoFz0Gr11Bm9hCt8iXL0eErm8Kyb9OcApg; ki1e_2132_connect_is_bind=1; ki1e_2132_smile=1D1; ki1e_2132_pc_size_c=0; Hm_lvt_da6569f688ba2c32429af00afd9eb8a1=1559780847,1559810342,1559810796,1560127058; ki1e_2132_creditnotice=0D0D0D0D0D0D0D0D0D538097; ki1e_2132_creditbase=0D1303D0D0D0D0D0D0D0; ki1e_2132_clearUserdata=forum; ki1e_2132_connect_not_sync_t=1; ki1e_2132_creditrule=%E5%8F%91%E8%A1%A8%E5%9B%9E%E5%A4%8D; td_cookie=18446744071559493794; timestamp=1560130076000; sign=4CBD74A5DD4643A9A56601CC25825DB4; ki1e_2132_nofocus_forum=1; ki1e_2132_atarget=1; ki1e_2132_forum_lastvisit=D_26_1560131402; ki1e_2132_ulastactivity=1560132614%7C0; ki1e_2132_checkpm=1; ki1e_2132_sendmail=1; ki1e_2132_lastcheckfeed=538097%7C1560132615; ki1e_2132_checkfollow=1; ki1e_2132_noticeTitle=1; Hm_lpvt_da6569f688ba2c32429af00afd9eb8a1=1560132616; amvid=c3faf2181a26daf6a98851670ae53153; ki1e_2132_lastact=1560132619%09forum.php%09viewthread; ki1e_2132_viewid=tid_6113962'
 DingPost_url = "https://oapi.dingtalk.com/robot/send?access_token=b63c5a144e9102029af7ef052c20150503441101f54dbb1c81a47285d56105d9"
 
-# 范围时间
-d_time = datetime.datetime.strptime(str(datetime.datetime.now().date()) + '10:00', '%Y-%m-%d%H:%M')
-d_time1 = datetime.datetime.strptime(str(datetime.datetime.now().date()) + '10:32', '%Y-%m-%d%H:%M')
-
-# 当前时间
-n_time = datetime.datetime.now()
-
-# 判断当前时间是否在范围时间内
-if n_time > d_time and n_time < d_time1:
-    print("login ")
-JSCode = r'''
-            function do_encrypt_rc4(src, passwd) {
-                passwd = passwd + '';
-                var i, j = 0, a = 0, b = 0, c = 0, temp;
-                var plen = passwd.length,
-                    size = src.length;
-            
-                var key = Array(256); //int
-                var sbox = Array(256); //int
-                var output = Array(size); //code of data
-                for (i = 0; i < 256; i++) {
-                    key[i] = passwd.charCodeAt(i % plen);
-                    sbox[i] = i;
-                }
-                for (i = 0; i < 256; i++) {
-                    j = (j + sbox[i] + key[i]) % 256;
-                    temp = sbox[i];
-                    sbox[i] = sbox[j];
-                    sbox[j] = temp;
-                }
-                for (i = 0; i < size; i++) {
-                    a = (a + 1) % 256;
-                    b = (b + sbox[a]) % 256;
-                    temp = sbox[a];
-                    sbox[a] = sbox[b];
-                    sbox[b] = temp;
-                    c = (sbox[a] + sbox[b]) % 256;
-                    temp = src.charCodeAt(i) ^ sbox[c];//String.fromCharCode(src.charCodeAt(i) ^ sbox[c]);
-                    temp = temp.toString(16);
-                    if (temp.length === 1) {
-                        temp = '0' + temp;
-                    } else if (temp.length === 0) {
-                        temp = '00';
-                    }
-                    output[i] = temp;
-                }
-                return output.join('');
-            }
-'''
-
 
 # key 13位UNIX时间 data 密码
 def get_des_psswd(data, key):
     try:
-        CTX = execjs.compile(JSCode)
-        return CTX.call('do_encrypt_rc4', data, key )
-        # jsstr = get_js()
-        # ctx = execjs.compile(jsstr)  # 加载JS文件
-        # return (ctx.call('do_encrypt_rc4', data, key))  # 调用js方法  第一个参数是JS的方法名，后面的data和key是js方法的参数
-       #return execjs.compile(open(r"E:\\bReadyWorking\\gothonweb\\bin\\loginCheck.js").read().decode("utf-8")).call('do_encrypt_rc4', data,key)
+        jsstr = get_js()
+        ctx = execjs.compile(jsstr)  # 加载JS文件
+        return (ctx.call('do_encrypt_rc4', data, key))  # 调用js方法  第一个参数是JS的方法名，后面的data和key是js方法的参数
+    # return execjs.compile(open(r"E:\\bReadyWorking\\gothonweb\\bin\\loginCheck.js").read().decode("utf-8")).call('do_encrypt_rc4', data,key)
     except Exception as e:
         print('GetDingMarkDown error:' + str(e))
 
-def js2pyTest(src,key):
+
+def js2pyTest(src, key):
     try:
         data = open('E:\\bReadyWorking\\gothonweb\\bin\\loginCheck.js', 'r', encoding='utf8').read()
 
@@ -91,7 +38,6 @@ def js2pyTest(src,key):
         print(data(src, key))
     except Exception as e:
         print('js2pyTest error:' + str(e))
-
 
 
 def get_js():
@@ -107,41 +53,41 @@ def get_js():
         print('GetDingMarkDown error:' + str(e))
 
 
-millis = int(round(time.time() * 1000))
-#psw = js2pyTest("123456", millis)
-psw = get_des_psswd("123456", millis)
+# current_milli_time = lambda: int(round(time.time() * 1000))
+# millis = int(round(time.time() * 1000))
+# psw = js2pyTest("123456", millis)
+
 # 1.代码登录
 # 1.1 登录的网址
 login_url = "http://191.168.4.1/ac_portal/disclaimer/pc.html?template=disclaimer&tabs=pwd&vlanid=0&_ID_=0&switch_url=&url=https://hao.360.com/?wd_xp1&controller_type=&mac=00-00-00-00-00-00"
 login_form_data = {
     "opr": "pwdLogin",
-    "userName": "翁兆炜",
-    "pwd": psw,
-    "auth_tag": millis,
+    "userName": "郑乔",
+    "pwd": "ee772406c049",
+    "auth_tag": "1576831030768",
     "rememberPwd": 0
 }
 # auth_tag 取到毫秒转化成Unix时间
 
 
 # 1.3 发送登录请求POST
-cook_jar = cookiejar.CookieJar()
+# cook_jar = cookiejar.CookieJar()
 # 定义有添加 cook 功能的 处理器
-cook_hanlder = urllib.request.HTTPCookieProcessor(cook_jar)
+# cook_hanlder = urllib.request.HTTPCookieProcessor(cook_jar)
 # 根据处理器 生成 opener
-opener = urllib.request.build_opener(cook_hanlder)
+# opener = urllib.request.build_opener(cook_hanlder)
 
 # 带着参数 发送post请求
 # 添加请求头
 headers2 = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.25 Safari/537.36 Core/1.70.3650.400 QQBrowser/10.4.3341.400"}
-# 1 参数 将来 需要转译 转码； 2 post 请求的 data 要求是bytes
-login_str = parse.urlencode(login_form_data).encode('utf-8')
-login_request = urllib.request.Request(login_url, headers=headers2, data=login_str)
-# 如果登录成功，cookjar自动保存cookie
-opener.open(login_request)
-for ck in cook_jar:
-    print(ck)
 
+
+# 1 参数 将来 需要转译 转码； 2 post 请求的 data 要求是bytes
+# login_str = parse.urlencode(login_form_data).encode('utf-8')
+# login_request = urllib.request.Request(login_url, headers=headers2, data=login_str)
+# 如果登录成功，cookjar自动保存cookie
+# opener.open(login_request)
 
 
 def get_contents(chapter):
@@ -244,9 +190,7 @@ def get_onpage(chapter, cookiesStr):
         # 设置请求头
         req.add_header('User-Agent',
                        'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36')
-
         resp = request.urlopen(req)
-
         rlt = resp.read().decode('gbk')
         soup = BeautifulSoup(rlt, 'html.parser')
 
@@ -259,6 +203,30 @@ def get_onpage(chapter, cookiesStr):
             wx.MessageBox("error", 'session 过期，请重新获取', wx.YES_NO)
             return ''
         else:
+            title = str(title)
+            titlpos = "撒果" in title
+            if titlpos:
+                try:
+                    form = soup.find('form', id='scbar_form')
+                    formhash = form.find('input', attrs={'name': 'formhash'}).get('value')
+                    tid = ''
+
+                    if 'thread-' in chapter:
+                        tpos = chapter.index('thread-')
+                        tmppid = chapter[tpos + 7:]
+                        tpos = tmppid.index('-')
+                        tid = tmppid[0:tpos]
+                    else:
+                        # http://www.zuanke8.com/forum.php?mod=viewthread&tid=6583253
+                        tpos = chapter.index('tid=')
+                        tid = chapter[tpos + 4:]
+                    if not tid == "":
+                        millis = int(round(time.time() * 1000))
+                        # responseUrl = 'http://www.zuanke8.com/forum.php?mod=post&action=reply&fid=15&tid=' + tid + '&extra=&replysubmit=yes&infloat=yes&handlekey=fastpost&inajax=1'
+                        # login_request = urllib.request.Request(responseUrl, headers=headers2, data=response_str)
+                    reply(tid, "1", millis, formhash)
+                except Exception as e:
+                    print('撒果回复error:' + str(e))
             # content1 = soup.find('td', class_='t_f').text
             comments = soup.find_all('td', 't_f')
             cnt = 0
@@ -273,13 +241,38 @@ def get_onpage(chapter, cookiesStr):
                     commentsStr.append(comment.text)
                 cnt = cnt + 1
                 # print(comment.text)
+
             return (remarks, '|'.join(commentsStr))
             # print(content1)
     except Exception as e:
         print('error:' + str(e))
 
 
-get_onpage("http://www.zuanke8.com/thread-6702621-1-1.html", cookiestrHead)
+def reply(tid, message, millis, formhash):
+    try:
+        postdata = {
+            "message": message,
+            "posttime": millis,
+            "formhash": formhash+"1",
+            "usesig": "1",
+            "subject": "  ",
+            "connect_publish_t": 0
+        }
+        # 添加请求头
+        headers2 = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.25 Safari/537.36 Core/1.70.3650.400 QQBrowser/10.4.3341.400",
+            "Content - Type": "application / x - www - form - urlencoded",
+            "Cookie": cookiestrHead}
+        # base_url = config.REPLYURL
+        base_url = r'http://www.zuanke8.com/forum.php?mod=post&action=reply&tid=TID&extra=&replysubmit=yes'
+        url = base_url.replace('TID', tid)
+        res1 = requests.post(url, postdata, headers=headers2)
+    except Exception as e:
+        print("error:"+str(e))
+
+
+# get_onpage("http://www.zuanke8.com/thread-6702621-1-1.html", cookiestrHead)
+get_onpage("http://www.zuanke8.com/forum.php?mod=viewthread&tid=6583253", cookiestrHead)
 
 
 def DingDingPost(title, content, picUrl, comments):
@@ -422,12 +415,11 @@ def DingPostTest():
     # x = requests.post(DingPost_url, data=json.dumps(data1), headers=headers)
     # print("post rlt:" + x.text)
 
-
 # DingDingPost("大标题", "内容测试", "https://p0.ssl.qhimg.com/t0170483da9aa036e6c.png", "评论测试")
 # DingPostTest()
-text = GetDingMarkDownText("测试标题1", "这是一本正经的内容", "这是一条很长的评论", "http://www.baidu.com",
-                           "https://p0.ssl.qhimg.com/t0170483da9aa036e6c.png")
-text2 = GetDingMarkDownText("测试标题2222222222222222222", "这是一本正经的内容22222222222", "这是一条很长的评论22222222222222",
-                            "http://www.baidu.com", "https://p0.ssl.qhimg.com/t0170483da9aa036e6c.png")
-text3 = text + text2
-DingPostMarkDown("新消息来了", text3)
+# text = GetDingMarkDownText("测试标题1", "这是一本正经的内容", "这是一条很长的评论", "http://www.baidu.com",
+#                            "https://p0.ssl.qhimg.com/t0170483da9aa036e6c.png")
+# text2 = GetDingMarkDownText("测试标题2222222222222222222", "这是一本正经的内容22222222222", "这是一条很长的评论22222222222222",
+#                             "http://www.baidu.com", "https://p0.ssl.qhimg.com/t0170483da9aa036e6c.png")
+# text3 = text + text2
+# DingPostMarkDown("新消息来了", text3)
